@@ -28,7 +28,7 @@ contract("xCreative", accounts => {
     mock721 = await web3tx(Mock721.new, "Deploying ERC721")("TotallyFakeNFT", "TFNFT");
     xora = await web3tx(xOracle.new, "Deploying xOracle")();
     gov = await web3tx(xDAO.new, "Deploying DAO")(
-      xora.address, 25, 5
+      xora.address, 10, 25
     );
     x20 = await web3tx(xERC20.new, "Deploying xCreative")(
       gov.address
@@ -39,7 +39,7 @@ contract("xCreative", accounts => {
     );
 
     await gov.whitelistERC721(x721.address);
-    await gov.mint(accounts[1], toWad(10));
+    await gov.mint(accounts[1], toWad(100));
     await mock721.batchMint(accounts[1], ["1", "2", "3", "4"]);
   });
   

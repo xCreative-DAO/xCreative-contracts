@@ -24,7 +24,7 @@ contract xCreativeDAO is IGovernance {
         community = msg.sender;
         priceOracle = oracle;
         _burnRate = burnRate;
-        _unwrap = unwrapRate;
+        _unwrap = 100 + unwrapRate;
     }
 
     function whitelistERC20(address xcrt) external onlyCommunity {
@@ -46,6 +46,7 @@ contract xCreativeDAO is IGovernance {
 
     //To unwrap the token the DAO asks for a fee
     function burnUnwrapRate(address from, uint256 price) external override managedERC721 {
+        xCreative.burn(from, (price * _unwrap) / 100);
     }
 
     function claimToken(address wrapId) external override {
