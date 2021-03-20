@@ -4,28 +4,29 @@ pragma experimental ABIEncoderV2;
 
 import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import { IERC721Receiver } from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IGovernance } from "./interfaces/IGovernance.sol";
 
 //import "@openzeppelin/contracts/token/ERC721/IERC721Metadata.sol";
 
-contract xCreativeWrapper is ERC721, IERC721Receiver {
+contract xCreativeWrapper is ERC721, IERC721Receiver, Ownable {
 
     event TokenWrapped(address indexed tokenAddress, uint256 indexed tokenId, address indexed to);
     event TokenUnwrapped(address indexed tokenAddress, uint256 indexed tokenId, address indexed to);
 
     mapping(uint256 => InnerToken) internal _innerTokens;
             
-    address public owner;
     IGovernance public orchestrator;
 
     struct InnerToken {
+        address creator;
         address tokenAddress;
         uint256 tokenId;
         uint256 price;
+        uint256 rolayties;
     }
 
     constructor(IGovernance _orchestrator) ERC721("xCreative", "x721") {
-        owner = msg.sender;
         orchestrator = _orchestrator;
     }
 
@@ -69,6 +70,9 @@ contract xCreativeWrapper is ERC721, IERC721Receiver {
         //Calculate price and tax, send wrapped token
         _innerTokens[wrapId].price = newPrice;
         _safeTransfer(ownerOf(wrapId), to, wrapId, "0x");
+        //Pay creator
+        address(uint160(token.creator)).transfer(msg.value * token.rolayties / 100);
+        address(uint160(owner())).transfer(address(this).balance);
     }
 
     function send(uint256 wrapId, address to) public payable {
@@ -86,15 +90,14 @@ contract xCreativeWrapper is ERC721, IERC721Receiver {
     function wrap(address tokenAddress, address to, uint256 tokenId, uint256 price) internal {
         require(tokenAddress != address(this), "Token is already wrap");
         uint256 wrapId = _genId(tokenAddress, tokenId);
-        _innerTokens[wrapId] = InnerToken(tokenAddress, tokenId, price);
+        _innerTokens[wrapId] = InnerToken(msg.sender, tokenAddress, tokenId, price, 80);
+        orchestrator.createIndex(to, wrapId);
         _mint(to, wrapId);
         emit TokenWrapped(tokenAddress, tokenId, to);
         //_setTokenURI(wrapId, IERC721Metadata(tokenAddress).tokenURI(tokenId));
     }
 
     function burn(uint256 tokenId) external {
-        //Unwarp token and send it back
-        //Tax calculation and discount
         require(_isApprovedOrOwner(msg.sender, tokenId), "xCreative: can't operate token");
         InnerToken memory inner = _innerTokens[tokenId];
         _burn(tokenId);
@@ -131,9 +134,5 @@ contract xCreativeWrapper is ERC721, IERC721Receiver {
 
     function _decode(bytes memory data) internal pure returns(uint256 sellingPrice) {
         return abi.decode(data, (uint256));
-    }
-
-    function _transferTax(address from, uint256 wrapId) internal {
-        //calculate tax and burn amount
     }
 }

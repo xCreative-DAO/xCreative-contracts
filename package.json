@@ -20,6 +20,8 @@
   "dependencies": {
     "@decentral.ee/web3-helpers": "^0.5.3",
     "@openzeppelin/contracts": "^3.4.1",
-    "@openzeppelin/test-helpers": "^0.5.10"
+    "@openzeppelin/test-helpers": "^0.5.10",
+    "@superfluid-finance/ethereum-contracts": "dev",
+    "@superfluid-finance/js-sdk": "dev"
   }
 }
