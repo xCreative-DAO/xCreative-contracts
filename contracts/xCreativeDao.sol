@@ -18,11 +18,14 @@ contract DAO is IGovernance {
     uint256 internal _burnRate;
     uint256 internal _unwrap;
 
-    constructor(IERC20 xcrt, IOracle oracle, uint256 burnRate) {
+    constructor(IERC20 xcrt, IOracle oracle, uint256 burnRate, uint256 unwrapRate) {
+        require(burnRate >= 0 && burnRate <= 100, "xCreative: Burn rate [0 - 100]");
+        require(unwrapRate >= 0 && burnRate <= 100, "xCreative: Unwrap rate [0 - 100]");
         community = msg.sender;
         xCreative = xcrt;
         priceOracle = oracle;
         _burnRate = burnRate;
+        _unwrap = unwrapRate;
     }
 
     function whitelistERC721(address tokenAddress) external onlyCommunity {
@@ -34,7 +37,7 @@ contract DAO is IGovernance {
     }
 
     function burnTransferRate(address from, uint256 price) external override managedERC721 {
-
+        xCreative.burn(from, price 
     }
 
     //To unwrap the token the DAO asks for a fee
