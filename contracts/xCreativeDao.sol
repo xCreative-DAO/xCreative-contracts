@@ -15,15 +15,15 @@ contract xCreativeDAO is IGovernance {
     mapping(address => bool) public erc721Contracts;
 
     /*Goverment parameters*/
-    uint256 internal _burnRate;
+    uint256 internal _transferRate;
     uint256 internal _unwrap;
 
-    constructor(IOracle oracle, uint256 burnRate, uint256 unwrapRate) {
-        require(burnRate >= 0 && burnRate <= 100, "xCreative: Burn rate [0 - 100]");
-        require(unwrapRate >= 0 && burnRate <= 100, "xCreative: Unwrap rate [0 - 100]");
+    constructor(IOracle oracle, uint256 transferRate, uint256 unwrapRate) {
+        require(transferRate >= 0 && transferRate <= 100, "xCreative: Transfer rate [0 - 100]");
+        require(unwrapRate >= 0 && unwrapRate <= 100, "xCreative: Unwrap rate [0 - 100]");
         community = msg.sender;
         priceOracle = oracle;
-        _burnRate = burnRate;
+        _transferRate = transferRate;
         _unwrap = 100 + unwrapRate;
     }
 
@@ -41,7 +41,7 @@ contract xCreativeDAO is IGovernance {
     }
 
     function burnTransferRate(address from, uint256 price) external override managedERC721 {
-        //xCreative.burn(from, price);
+        xCreative.burn(from, (price * _transferRate) / 100);
     }
 
     //To unwrap the token the DAO asks for a fee
