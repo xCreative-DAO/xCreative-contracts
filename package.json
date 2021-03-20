@@ -9,10 +9,17 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": ["DAO", "ETHEREUM", "NFT", "ERC721"],
+  "keywords": [
+    "DAO",
+    "ETHEREUM",
+    "NFT",
+    "ERC721"
+  ],
   "author": "xCreative Team",
   "license": "MIT",
   "dependencies": {
-    "@openzeppelin/contracts": "^3.4.1"
+    "@decentral.ee/web3-helpers": "^0.5.3",
+    "@openzeppelin/contracts": "^3.4.1",
+    "@openzeppelin/test-helpers": "^0.5.10"
   }
 }

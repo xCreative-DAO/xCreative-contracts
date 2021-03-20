@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.7.6;
 
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { xIERC20 } from "./interfaces/xIERC20.sol";
 import { IGovernance } from "./interfaces/IGovernance.sol";
 import { IOracle } from "./interfaces/IOracle.sol";
 
 
-contract DAO is IGovernance {
+contract xCreativeDAO is IGovernance {
 
     address public community;
-    IERC20 public xCreative;
+    xIERC20 public xCreative;
     IOracle public priceOracle;
 
     mapping(address => bool) public erc721Contracts;
@@ -18,14 +18,18 @@ contract DAO is IGovernance {
     uint256 internal _burnRate;
     uint256 internal _unwrap;
 
-    constructor(IERC20 xcrt, IOracle oracle, uint256 burnRate, uint256 unwrapRate) {
+    constructor(IOracle oracle, uint256 burnRate, uint256 unwrapRate) {
         require(burnRate >= 0 && burnRate <= 100, "xCreative: Burn rate [0 - 100]");
         require(unwrapRate >= 0 && burnRate <= 100, "xCreative: Unwrap rate [0 - 100]");
         community = msg.sender;
-        xCreative = xcrt;
         priceOracle = oracle;
         _burnRate = burnRate;
         _unwrap = unwrapRate;
+    }
+
+    function whitelistERC20(address xcrt) external onlyCommunity {
+        require(address(xCreative) == address(0), "xCreative: ERC20 already set");
+        xCreative = xIERC20(xcrt);
     }
 
     function whitelistERC721(address tokenAddress) external onlyCommunity {
@@ -37,7 +41,7 @@ contract DAO is IGovernance {
     }
 
     function burnTransferRate(address from, uint256 price) external override managedERC721 {
-        xCreative.burn(from, price 
+        //xCreative.burn(from, price);
     }
 
     //To unwrap the token the DAO asks for a fee
@@ -45,6 +49,10 @@ contract DAO is IGovernance {
     }
 
     function claimToken(address wrapId) external override {
+    }
+
+    function mint(address to, uint256 amount) external override onlyCommunity {
+        xCreative.mint(to, amount);
     }
 
     modifier managedERC721() {

@@ -118,7 +118,7 @@ contract xCreativeWrapper is ERC721, IERC721Receiver {
         uint256 price = _decode(data);
         require(price > 0, "xCreative: define selling price");
         wrap(msg.sender, from, tokenId, price);
-        return 0x150b7a02;
+        return this.onERC721Received.selector;
     }
 
     function _decode(bytes memory data) internal pure returns(uint256 sellingPrice) {
