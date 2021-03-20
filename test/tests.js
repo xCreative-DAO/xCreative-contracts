@@ -38,6 +38,7 @@ contract("xCreative", accounts => {
       gov.address
     );
 
+    await gov.whitelistERC721(x721.address);
     await gov.mint(accounts[1], toWad(10));
     await mock721.batchMint(accounts[1], ["1", "2", "3", "4"]);
   });
@@ -52,10 +53,25 @@ contract("xCreative", accounts => {
       contract.methods["safeTransferFrom(address,address,uint256,bytes)"](accounts[1], x721.address, 1, data).encodeABI();
     await web3.eth.sendTransaction({ to: mock721.address, from: accounts[1], data: overST , gasPrice: 1e9, gas:1000000});
 
-    const r = await x721.balanceOf(accounts[1]);
-    const ownerOf = await x721.ownerOf(wrapId);
+    let r = await x721.balanceOf(accounts[1]);
+    let ownerOf = await x721.ownerOf(wrapId);
     console.log(r.toString());
     console.log(" ID (0x): ", wrapId, " -> ", ownerOf ," = ", accounts[1]);
+    let tokenInfo = await x721.getToken(wrapId);
+    console.log(tokenInfo);
+
+    //transfer unwraping the token first and burn tokens
+    await x721.safeTransferFrom(accounts[1], accounts[2], wrapId, {from: accounts[1]});
+
+    r = await x721.balanceOf(accounts[1]);
+    //ownerOf = await x721.ownerOf(wrapId);
+    console.log(r.toString());
+    tokenInfo = await x721.getToken(wrapId);
+    console.log(tokenInfo);
+
+    let soloToken = await mock721.balanceOf(accounts[2]);
+    console.log(soloToken.toString());
+
     });
 
 

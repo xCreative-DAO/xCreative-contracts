@@ -11,6 +11,7 @@ import { IGovernance } from "./interfaces/IGovernance.sol";
 contract xCreativeWrapper is ERC721, IERC721Receiver {
 
     event TokenWrapped(address indexed tokenAddress, uint256 indexed tokenId, address indexed to);
+    event TokenUnwrapped(address indexed tokenAddress, uint256 indexed tokenId, address indexed to);
 
     mapping(uint256 => InnerToken) internal _innerTokens;
             
@@ -23,9 +24,9 @@ contract xCreativeWrapper is ERC721, IERC721Receiver {
         uint256 price;
     }
 
-    constructor(IGovernance orchestrator) ERC721("xCreative", "x721") {
+    constructor(IGovernance _orchestrator) ERC721("xCreative", "x721") {
         owner = msg.sender;
-        orchestrator = orchestrator;
+        orchestrator = _orchestrator;
     }
 
     function transferFrom(address from, address to, uint256 tokenId) public override {
@@ -40,19 +41,25 @@ contract xCreativeWrapper is ERC721, IERC721Receiver {
     function safeTransferFrom(address from, address to, uint256 tokenId) public override {
         require(_isApprovedOrOwner(msg.sender, tokenId), "xCreative: can't operate token");
         InnerToken memory token = _innerTokens[tokenId];
+        require(token.tokenId != 0, "ups");
         //burn xCreative token
         orchestrator.burnUnwrapRate(msg.sender, token.price);
         _burn(tokenId);
-        ERC721(token.tokenAddress).safeTransferFrom(from, to, tokenId);
+        ERC721(token.tokenAddress).safeTransferFrom(address(this), to, token.tokenId);
+        emit TokenUnwrapped(token.tokenAddress, token.tokenId, to);
+        delete _innerTokens[tokenId];
     }
 
     function safeTransferFrom(address from, address to, uint256 tokenId, bytes memory _data) public virtual override {
         require(_isApprovedOrOwner(msg.sender, tokenId), "xCreative: can't operate token");
         InnerToken memory token = _innerTokens[tokenId];
+        require(token.tokenId != 0, "ups");
         //burn xCreative token
         orchestrator.burnUnwrapRate(msg.sender, token.price);
         _burn(tokenId);
-        ERC721(token.tokenAddress).safeTransferFrom(from, to, tokenId, _data);
+        ERC721(token.tokenAddress).safeTransferFrom(address(this), to, token.tokenId, _data);
+        emit TokenUnwrapped(token.tokenAddress, token.tokenId, to);
+        delete _innerTokens[tokenId];
     }
 
     function buy(uint256 wrapId, address to, uint256 newPrice) public payable {
@@ -85,12 +92,13 @@ contract xCreativeWrapper is ERC721, IERC721Receiver {
         //_setTokenURI(wrapId, IERC721Metadata(tokenAddress).tokenURI(tokenId));
     }
 
-    function burn(uint256 wrapId) external {
+    function burn(uint256 tokenId) external {
         //Unwarp token and send it back
         //Tax calculation and discount
-        InnerToken memory inner = _innerTokens[wrapId];
-        _burn(wrapId); //burn wrapper
-        delete _innerTokens[wrapId];
+        require(_isApprovedOrOwner(msg.sender, tokenId), "xCreative: can't operate token");
+        InnerToken memory inner = _innerTokens[tokenId];
+        _burn(tokenId);
+        delete _innerTokens[tokenId];
         ERC721(inner.tokenAddress).approve(msg.sender, inner.tokenId);
     }
 
