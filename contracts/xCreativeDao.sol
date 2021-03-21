@@ -26,6 +26,9 @@ contract xCreativeDAO is IGovernance, Ownable {
 
     mapping(address => bool) public erc721Contracts;
     mapping (uint256 => mapping(address => bool)) public valueChain;
+    mapping(uint256 => uint32) internal _idxTokenId; 
+
+    uint32 internal _idx;
 
     //uint32 public constant INDEX_ID = 0;
 
@@ -54,6 +57,7 @@ contract xCreativeDAO is IGovernance, Ownable {
         require(address(xCreative) == address(0), "xCreative: ERC20 already set");
         _xCRTx = ISuperToken(xcrtx);
         xCreative = xIERC20(_xCRTx.getUnderlyingToken());
+        xCreative.approve(xcrtx, type(uint256).max);
     }
 
     function whitelistERC721(address tokenAddress) external onlyOwner {
@@ -64,51 +68,60 @@ contract xCreativeDAO is IGovernance, Ownable {
         return priceOracle.ETHPriceOfERC20(address(xCreative));
     }
 
-    function distributeChain(uint256 tokenId, uint256 amount) public {
-         (uint256 actualCashAmount,) = _ida.calculateDistribution(
+    function distribute(uint256 tokenId, uint256 amount) public override {
+        (uint256 actualCashAmount,) = _ida.calculateDistribution(
             _xCRTx,
-            address(this),
-            uint32(tokenId),
+            address(this), 1,
             amount);
 
-        _xCRTx.transferFrom(owner(), address(this), actualCashAmount);
-
-        _host.callAgreement(
-            _ida,
-            abi.encodeWithSelector(
-                _ida.distribute.selector,
-                _xCRTx,
-                uint32(tokenId),
-                actualCashAmount,
-                new bytes(0) // placeholder ctx
-            ),
-            new bytes(0) // user data
-        );
+            xCreative.mint(address(this), actualCashAmount);
+            _xCRTx.upgrade(actualCashAmount);
+            _host.callAgreement(
+                _ida,
+                abi.encodeWithSelector(
+                    _ida.distribute.selector,
+                    _xCRTx,
+                    _idxTokenId[tokenId],
+                    actualCashAmount,
+                    new bytes(0)
+                ),
+                new bytes(0)
+            );
     }
 
-    function createIndex(address to, uint256 tokenId) external override managedERC721 {
-        _host.callAgreement(
-            _ida,
-            abi.encodeWithSelector(
-                _ida.createIndex.selector,
-                _xCRTx,
-                uint32(tokenId),
-                new bytes(0) // placeholder ctx
-            ),
-            new bytes(0) // user data
-        );
+    function createIndex(uint256 tokenId) external override managedERC721 {
+        if(_idxTokenId[tokenId] == 0) {
+            _idx++;
+            _host.callAgreement(
+                _ida,
+                abi.encodeWithSelector(
+                    _ida.createIndex.selector,
+                    _xCRTx,
+                    _idx,
+                    new bytes(0)
+                ),
+                new bytes(0)
+            );
+            _idxTokenId[tokenId] = _idx;
+        }
+    }
+
+    function updateIndex(uint256 tokenId, address to) external override managedERC721 {
+
+        xCreative.mint(address(this), 1 ether);
+        _xCRTx.upgrade(1 ether);
 
         _host.callAgreement(
             _ida,
             abi.encodeWithSelector(
                 _ida.updateSubscription.selector,
                 _xCRTx,
-                tokenId,
+                _idxTokenId[tokenId],
                 to,
-                uint128(10 ether),
-                new bytes(0) // placeholder ctx
+                uint128(1),
+                new bytes(0)
             ),
-            new bytes(0) // user data
+            new bytes(0)
         );
     }
 
@@ -120,7 +133,7 @@ contract xCreativeDAO is IGovernance, Ownable {
             abi.encodeWithSelector(
                 _ida.updateSubscription.selector,
                 _xCRTx,
-                tokenId,
+                _idxTokenId[tokenId],
                 to,
                 uint128(10 ether),
                 new bytes(0)

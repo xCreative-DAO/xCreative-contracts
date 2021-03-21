@@ -6,7 +6,6 @@ import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import { IERC721Receiver } from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IGovernance } from "./interfaces/IGovernance.sol";
-
 //import "@openzeppelin/contracts/token/ERC721/IERC721Metadata.sol";
 
 contract xCreativeWrapper is ERC721, IERC721Receiver, Ownable {
@@ -15,7 +14,6 @@ contract xCreativeWrapper is ERC721, IERC721Receiver, Ownable {
     event TokenUnwrapped(address indexed tokenAddress, uint256 indexed tokenId, address indexed to);
 
     mapping(uint256 => InnerToken) internal _innerTokens;
-            
     IGovernance public orchestrator;
 
     struct InnerToken {
@@ -23,7 +21,7 @@ contract xCreativeWrapper is ERC721, IERC721Receiver, Ownable {
         address tokenAddress;
         uint256 tokenId;
         uint256 price;
-        uint256 rolayties;
+        uint256 royalties;
     }
 
     constructor(IGovernance _orchestrator) ERC721("xCreative", "x721") {
@@ -63,16 +61,23 @@ contract xCreativeWrapper is ERC721, IERC721Receiver, Ownable {
         delete _innerTokens[tokenId];
     }
 
-    function buy(uint256 wrapId, address to, uint256 newPrice) public payable {
-        InnerToken memory token = _innerTokens[wrapId];
+    function buy(uint256 tokenId, address to, uint256 newPrice) public payable {
+        InnerToken memory token = _innerTokens[tokenId];
         require(token.tokenId > 0, "xCreative: Token don't exist");
         require(token.price <= msg.value, "xCreative: Price not meet");
-        //Calculate price and tax, send wrapped token
-        _innerTokens[wrapId].price = newPrice;
-        _safeTransfer(ownerOf(wrapId), to, wrapId, "0x");
+        _innerTokens[tokenId].price = newPrice;
+        address oldOwner = ownerOf(tokenId);
+
+        //Pay seller
+        address(uint160(ownerOf(tokenId))).transfer((msg.value * 80) / 100);
         //Pay creator
-        address(uint160(token.creator)).transfer(msg.value * token.rolayties / 100);
-        address(uint160(owner())).transfer(address(this).balance);
+        address(uint160(token.creator)).transfer((msg.value * token.royalties) / 100);
+        //Pay DAO
+        uint256 ethDAO = address(this).balance;
+        address(uint160(owner())).transfer(ethDAO);
+        _safeTransfer(ownerOf(tokenId), to, tokenId, "0x");
+        orchestrator.distribute(tokenId, ethDAO);
+        orchestrator.updateIndex(tokenId, oldOwner);
     }
 
     function send(uint256 wrapId, address to) public payable {
@@ -90,8 +95,9 @@ contract xCreativeWrapper is ERC721, IERC721Receiver, Ownable {
     function wrap(address tokenAddress, address to, uint256 tokenId, uint256 price) internal {
         require(tokenAddress != address(this), "Token is already wrap");
         uint256 wrapId = _genId(tokenAddress, tokenId);
-        _innerTokens[wrapId] = InnerToken(msg.sender, tokenAddress, tokenId, price, 80);
-        orchestrator.createIndex(to, wrapId);
+        _innerTokens[wrapId] = InnerToken(to, tokenAddress, tokenId, price, 10);
+        orchestrator.createIndex(wrapId);
+        orchestrator.updateIndex(wrapId, to);
         _mint(to, wrapId);
         emit TokenWrapped(tokenAddress, tokenId, to);
         //_setTokenURI(wrapId, IERC721Metadata(tokenAddress).tokenURI(tokenId));
