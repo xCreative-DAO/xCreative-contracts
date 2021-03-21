@@ -25,12 +25,8 @@ contract xCreativeDAO is IGovernance, Ownable {
     IInstantDistributionAgreementV1 private _ida;
 
     mapping(address => bool) public erc721Contracts;
-    mapping (uint256 => mapping(address => bool)) public valueChain;
     mapping(uint256 => uint32) internal _idxTokenId; 
-
     uint32 internal _idx;
-
-    //uint32 public constant INDEX_ID = 0;
 
     /*Goverment parameters*/
     uint256 internal _transferRate;
@@ -69,6 +65,8 @@ contract xCreativeDAO is IGovernance, Ownable {
     }
 
     function distribute(uint256 tokenId, uint256 amount) public override {
+
+        uint256 distributeAmount = this.getTokenPrice() * amount;
         (uint256 actualCashAmount,) = _ida.calculateDistribution(
             _xCRTx,
             address(this), 1,
@@ -126,8 +124,8 @@ contract xCreativeDAO is IGovernance, Ownable {
     }
 
     function burnTransferRate(address from, address to, uint256 price, uint256 tokenId) external override managedERC721 {
-        xCreative.burn(from, (price * _transferRate) / 100);
-
+        uint256 burnAmount = ((this.getTokenPrice() * price) * _transferRate) / 100;
+        xCreative.burn(from, burnAmount);
         _host.callAgreement(
             _ida,
             abi.encodeWithSelector(
@@ -135,7 +133,7 @@ contract xCreativeDAO is IGovernance, Ownable {
                 _xCRTx,
                 _idxTokenId[tokenId],
                 to,
-                uint128(10 ether),
+                uint128(burnAmount),
                 new bytes(0)
             ),
             new bytes(0)
@@ -144,7 +142,8 @@ contract xCreativeDAO is IGovernance, Ownable {
 
     //To unwrap the token the DAO asks for a fee
     function burnUnwrapRate(address from, uint256 price) external override managedERC721 {
-        xCreative.burn(from, (price * _unwrap) / 100);
+        uint256 burnAmount = ((this.getTokenPrice() * price) * _unwrap) / 100;
+        xCreative.burn(from, burnAmount);
     }
 
     function claimToken(address wrapId) external override {

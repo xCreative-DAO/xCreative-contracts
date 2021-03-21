@@ -67,7 +67,6 @@ contract xCreativeWrapper is ERC721, IERC721Receiver, Ownable {
         require(token.price <= msg.value, "xCreative: Price not meet");
         _innerTokens[tokenId].price = newPrice;
         address oldOwner = ownerOf(tokenId);
-
         //Pay seller
         address(uint160(ownerOf(tokenId))).transfer((msg.value * 80) / 100);
         //Pay creator
@@ -75,17 +74,12 @@ contract xCreativeWrapper is ERC721, IERC721Receiver, Ownable {
         //Pay DAO
         uint256 ethDAO = address(this).balance;
         address(uint160(owner())).transfer(ethDAO);
+        //Transfer NFT to new Owner
         _safeTransfer(ownerOf(tokenId), to, tokenId, "0x");
+        //Pay chain of owners
         orchestrator.distribute(tokenId, ethDAO);
+        //Add old Seller to chain of owners
         orchestrator.updateIndex(tokenId, oldOwner);
-    }
-
-    function send(uint256 wrapId, address to) public payable {
-        InnerToken memory token = _innerTokens[wrapId];
-        require(token.tokenId > 0, "xCreative: Token don't exist");
-        require(token.price <= msg.value, "xCreative: Price not meet");
-        //Calculate price and tax, send wrapped token
-        _safeTransfer(ownerOf(wrapId), to, wrapId, "0x");
     }
 
     function getToken(uint256 wrapId) public view returns(InnerToken memory token) {

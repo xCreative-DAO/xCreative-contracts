@@ -6,7 +6,7 @@ import { IOracle } from "./../interfaces/IOracle.sol";
 contract MockOracle is IOracle {
 
     function ETHPriceOfERC20(address erc20Address) public view override returns(uint256) {
-        return 1000;
+        return 1;
     }
 
 }
